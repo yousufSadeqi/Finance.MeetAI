@@ -246,8 +246,8 @@ export const SignUpViews = () => {
             </form>
           </Form>
 
-          <div className="bg-radial from-green-500 to-green-800 relative hidden md:flex flex-col gap-y-4 items-center justify-center">
-            <img src="/logo.png" alt="Image" className="h-[92px] w-[92px]" />
+          <div className="bg-radial from-sidebar-accent to-sidebar relative hidden md:flex flex-col gap-y-4 items-center justify-center">
+            <img src="/logo.png" alt="Image" className="h-[40px] w-[100px]" />
             <p className="text-2xl font-semibold text-white"> 
               FinAI
             </p>

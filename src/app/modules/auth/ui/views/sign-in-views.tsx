@@ -18,10 +18,13 @@ import { Button } from "@/components/ui/button";
 import Link from 'next/link'
 import { useRouter } from "next/navigation"; // ✅ Correct for App Router
 
+
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { auth } from "@/lib/auth";
 import { FaGithub, FaGoogle } from 'react-icons/fa';
+import Image from 'next/image';
+import { Input } from "@/components/ui/input";
 
 
 const formSchema = z.object({
@@ -29,11 +32,12 @@ const formSchema = z.object({
   password: z.string().min(1, { message: 'Password is required' }),
 });
 
-export const SignInViews = () => {
-    const router = useRouter(); 
-    const [err, setErr] = useState<string | null>(null)
-    const [pending, setPending] = useState(false)
 
+export const SignInViews = () => {
+  const router = useRouter(); 
+  const [err, setErr] = useState<string | null>(null)
+  const [pending, setPending] = useState(false)
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -47,44 +51,41 @@ export const SignInViews = () => {
     setErr(null); 
     setPending(true);
     authClient.signIn.email(
-        {
-            email:data.email,
-            password: data.password,
-            callbackURL: '/',
-        }, 
-        {
-            onSuccess: () => {
-                setPending(false);
-                router.push('/')
-            },
-            onError: ({error}) => {
-                setPending(false);
-                setErr(error.message)
-            },
-            
+      {
+        email: data.email,
+        password: data.password,
+        callbackURL: '/',
+      },
+      {
+        onSuccess: () => {
+          setPending(false);
+          router.push('/')
         },
-        
+        onError: ({ error }) => {
+          setPending(false);
+          setErr(error.message)
+        },
+      },
     )
   }
+
   const onSocial = (provider: 'github' | 'google') => {
     setErr(null); 
     setPending(true);
     authClient.signIn.social(
-        {
-            provider: provider,
-            callbackURL: '/'
-        }, 
-        {
-            onSuccess: () => {
-                setPending(false);
-            },
-            onError: ({error}) => {
-                setPending(false);
-                setErr(error.message)
-            },
-            
+      {
+        provider: provider,
+        callbackURL: '/'
+      },
+      {
+        onSuccess: () => {
+          setPending(false);
         },
-        
+        onError: ({ error }) => {
+          setPending(false);
+          setErr(error.message)
+        },
+      },
     )
   }
 
@@ -115,7 +116,7 @@ export const SignInViews = () => {
                       <FormItem>
                         <FormLabel>Email</FormLabel>
                         <FormControl>
-                          <input 
+                          <Input
                             type='email'
                             placeholder="m@example.com"
                             {...field}
@@ -134,11 +135,25 @@ export const SignInViews = () => {
                       <FormItem>
                         <FormLabel>Password</FormLabel>
                         <FormControl>
-                          <input 
-                            type='password'
-                            placeholder="**********"
-                            {...field}
-                          />
+                          <div className="relative flex items-center">
+                            <Input  
+                              type={showPassword ? 'text' : 'password'}
+                              placeholder="**********"
+                              autoComplete="current-password"
+                              aria-label="Password"
+                              {...field}
+                              className="pr-10 w-full"
+                            />
+                            <button
+                              type="button"
+                              tabIndex={-1}
+                              aria-label={showPassword ? 'Hide password' : 'Show password'}
+                              className="absolute right-2 text-xs text-muted-foreground focus:outline-none"
+                              onClick={() => setShowPassword((v) => !v)}
+                            >
+                              {showPassword ? 'Hide' : 'Show'}
+                            </button>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -155,8 +170,14 @@ export const SignInViews = () => {
                         </AlertTitle>
                     </Alert>
                 )}
-                <Button type='submit' className='w-full' disabled={pending}>
-                    Sign in 
+                <Button type='submit' className='w-full flex items-center justify-center gap-2' disabled={pending} aria-busy={pending}>
+                  {pending && (
+                    <svg className="animate-spin h-4 w-4 mr-2 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                  )}
+                  Sign in
                 </Button>
                 <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
                     <span className="bg-card text-muted-foreground relative z-10 px-2">
@@ -165,26 +186,28 @@ export const SignInViews = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <Button
-                        variant="outline"
-                        type="button"
-                        onClick={() => {
-                          onSocial('google')
-                        }}
-                        disabled={pending}
-                        className="w-full"
+                      variant="outline"
+                      type="button"
+                      onClick={() => {
+                        onSocial('google')
+                      }}
+                      disabled={pending}
+                      className="w-full flex items-center justify-center"
+                      aria-label="Sign in with Google"
                     >
-                        <FaGoogle></FaGoogle>
+                      <FaGoogle />
                     </Button>
                     <Button
-                        variant="outline"
-                        onClick={() => {
-                          onSocial('github')
-                        }}
-                        disabled={pending}
-                        type="button"
-                        className="w-full"
+                      variant="outline"
+                      onClick={() => {
+                        onSocial('github')
+                      }}
+                      disabled={pending}
+                      type="button"
+                      className="w-full flex items-center justify-center"
+                      aria-label="Sign in with GitHub"
                     >
-                        <FaGithub></FaGithub>
+                      <FaGithub />
                     </Button>
                 </div>
                 <div className="text-center text-sm">
@@ -197,8 +220,8 @@ export const SignInViews = () => {
             </form>
           </Form>
 
-          <div className="bg-radial from-green-500 to-green-800 relative hidden md:flex flex-col gap-y-4 items-center justify-center">
-            <img src="/logo.png" alt="Image" className="h-[92px] w-[92px]" />
+          <div className="bg-radial from-sidebar-accent to-sidebar relative hidden md:flex flex-col gap-y-4 items-center justify-center">
+            <Image src="/logo.png" alt="FinAI Logo" width={100} height={40} className="h-[40px] w-[100px]" priority />
             <p className="text-2xl font-semibold text-white"> 
               FinAI
             </p>
@@ -206,7 +229,7 @@ export const SignInViews = () => {
         </CardContent>
       </Card>
       <div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *[a]:underline *:[a]:underline-offset-4">
-                By click continue, you agree to our <a href='#'>Terms of service</a> and <a href='#'>private policy</a> 
+        By clicking continue, you agree to our <a href="#" tabIndex={0}>Terms of service</a> and <a href="#" tabIndex={0}>privacy policy</a> 
       </div>
     </div>
   );
