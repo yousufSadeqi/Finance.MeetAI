@@ -11,9 +11,9 @@ interface Props {
 }
 
 export const CallProvider = ({ meetingId, meetingName }: Props) => {
-    const {data, isPending} = authClient.useSession();
+    const { data, isPending } = authClient.useSession();
 
-    if (!data && isPending) {
+    if (isPending || !data) {
         return (
             <div className="flex h-screen items-center justify-center bg-radial from-sidebar-accent to-sidebar">
                 <LoaderIcon className="size-6 animate-spin text-white" />
@@ -25,10 +25,9 @@ export const CallProvider = ({ meetingId, meetingName }: Props) => {
         <CallConnect
             meetingId={meetingId}
             meetingName={meetingName}
-            userId={data?.user.id || ''}
-            userName={data?.user.name || ''}
-            userImage={data?.user.image ?? generateAvatar({seed: data?.user.id || '', variant: 'initials'})}
-        
+            userId={data.user.id}
+            userName={data.user.name}
+            userImage={data.user.image ?? generateAvatar({ seed: data.user.id, variant: 'initials' })}
         />
-    )
-}
+    );
+};
