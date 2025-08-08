@@ -7,7 +7,7 @@ interface Props {
     variant?: 'botttsNeutral' | 'initials'
 }
 
-export const generateAvatar = ({ seed, variant = 'botttsNeutral' }: Props) => {
+export const generateAvatarUri = ({ seed, variant = 'botttsNeutral' }: Props) => {
     let avatar; 
 
     if(variant === 'botttsNeutral') {
