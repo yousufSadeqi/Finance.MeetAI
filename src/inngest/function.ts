@@ -1,14 +1,15 @@
 import { inngest } from "./client";
 import JSONL from "jsonl-parse-stringify";
-import {createAgent, openai, TextMessage} from "@inngest/agent-kit"
+import { createAgent, openai, TextMessage } from "@inngest/agent-kit";
 
 import { StreamTransctipItem } from "@/app/modules/meetings/types";
 import { db } from "@/db";
-import { agents, user } from "@/db/schema";
-import { inArray } from "drizzle-orm";
+import { agents, meetings, user } from "@/db/schema";
+import { eq, inArray } from "drizzle-orm";
 
+// Create summarizer agent
 const summarizer = createAgent({
-  name: 'summarizer',
+  name: "summarizer",
   system: `
     You are an expert summarizer. You write readable, concise, simple content. You are given a transcript of a meeting and you need to summarize it.
 
@@ -30,71 +31,70 @@ Example:
 - Feature X automatically does Y
 - Mention of integration with Z
   `.trim(),
-  model: openai({ model: "gpt-4o", apiKey: process.env.OPENAI_API_KEY}),
+  model: openai({ model: "gpt-4o", apiKey: process.env.OPENAI_API_KEY }),
 });
 
 export const meetingsProcessing = inngest.createFunction(
-  
-  {id : 'meetings/processing'},
-  {event: 'meetings/processing'},
-  async ({event, step}) => {
-    const response = await step.run("fetch-transcipt", async () => {
-      return fetch(event.data.transcriptUrl).then((res) => res.text());
-    }); 
+  { id: "meetings/processing" },
+  { event: "meetings/processing" },
+  async ({ event, step }) => {
+    // 1. Fetch transcript file
+    const rawTranscript = await step.run("fetch-transcript", async () => {
+      const res = await fetch(event.data.transcriptUrl);
+      return res.text();
+    });
 
-    const transcrpt = await step.run("parse-transcript", async () => {
-      return JSONL.parse<StreamTransctipItem>(response);
-    })
+    // 2. Parse transcript JSONL
+    const transcript: StreamTransctipItem[] = await step.run(
+      "parse-transcript",
+      async () => JSONL.parse<StreamTransctipItem>(rawTranscript)
+    );
 
+    // 3. Add speaker names
     const transcriptWithSpeaker = await step.run("add-speakers", async () => {
-      const speakerIds = [
-        ...new Set(transcrpt.map((item) => item.speaker_id)),
-      ]
+      const speakerIds = [...new Set(transcript.map((item) => item.speaker_id))];
 
       const userSpeakers = await db
-      .select()
-      .from(user)
-      .where(inArray(user.id, speakerIds))
-      .then((users) => {
-        users.map((user) => ({
-          ...user, 
-        }))
-      })
+        .select()
+        .from(user)
+        .where(inArray(user.id, speakerIds));
 
-      const agentSpeaker = await db
-      .select()
-      .from(agents)
-      .where(inArray(agents.id, speakerIds))
-      .then((agents) => 
-        agents.map((agent) => ({
-          ...agent,
-          // name: agent.name ?? agent.id, // Fallback to id if name is not set
-        }))
-      )
+      const agentSpeakers = await db
+        .select()
+        .from(agents)
+        .where(inArray(agents.id, speakerIds));
 
-      const speakers = [...userSpeakers, ...agentSpeaker];
+      const speakers = [...userSpeakers, ...agentSpeakers];
 
-      return transcript.map((items) => {
-        const speaker = speakers.find(
-          (speaker) => speaker.id === items.speaker_id
-        )
-
-        if(!speaker) {
-          return {
-            ...items,
-            user: {
-              name: 'Unknown',
-            }
-          }
-        }
+      return transcript.map((item) => {
+        const speaker = speakers.find((s) => s.id === item.speaker_id);
         return {
-          ...items,
+          ...item,
           user: {
-            name: speaker.name
-          }
-        }
-      })
+            name: speaker?.name || "Unknown",
+          },
+        };
+      });
+    });
 
-     })
+    // 4. Generate summary
+    const { output } = await summarizer.run(
+      "Summarize the following transcript: " +
+        JSON.stringify(transcriptWithSpeaker)
+    );
+
+    const summaryText =
+      (output[0] as TextMessage)?.content?.toString() || "";
+
+    // 5. Save summary
+    await step.run("save-summary", async () => {
+      await db
+        .update(meetings)
+        .set({
+          summary: summaryText,
+          status: "completed",
+        })
+        .where(eq(meetings.id, event.data.meetingId));
+    });
   }
 );
