@@ -8,7 +8,7 @@ import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MIN_PAGE_SIZE } from "@
 import { meetingsInsertSchema, meetingsUpdateSchema } from "../schema";
 import { MeetingsStatus } from "../types";
 import { streamVideo } from "@/lib/stream-video";
-import { generateAvatar } from "@/lib/avatar";
+import { generateAvatarUri } from "@/lib/avatar";
 
 export const meetingsRouter = createTRPCRouter({
 
@@ -20,7 +20,7 @@ export const meetingsRouter = createTRPCRouter({
             role: 'admin',
             image:
               ctx.session.user.image ??
-              generateAvatar({ seed: ctx.session.user.id, variant: "initials" }),
+              generateAvatarUri({ seed: ctx.session.user.id, variant: "initials" }),
           }
         ]);
 
@@ -169,7 +169,7 @@ export const meetingsRouter = createTRPCRouter({
             role: 'user',
             image: 
               existingAgent.name ??
-              generateAvatar({seed: existingAgent.id, variant: "botttsNeutral" }),
+              generateAvatarUri({seed: existingAgent.id, variant: "botttsNeutral" }),
           }
         ])
 
